@@ -61,16 +61,17 @@ jobs:
           if-no-files-found: error
 
       - name: Configure GitHub Pages
+        if: github.event_name == 'push'
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload Pages artifact
+        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
 
   deploy:
+    if: github.event_name == 'push'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
