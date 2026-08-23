@@ -4,10 +4,11 @@ extends RefCounted
 const MILESTONE_STEP := 500
 
 static func target_for(score: int, run_start_best: int) -> int:
-    var next_milestone := ((maxi(score, 0) / MILESTONE_STEP) + 1) * MILESTONE_STEP
-    if run_start_best > score and run_start_best - score <= MILESTONE_STEP:
+    var safe_score := maxi(score, 0)
+    var next_milestone := ((safe_score / MILESTONE_STEP) + 1) * MILESTONE_STEP
+    if run_start_best > safe_score and run_start_best - safe_score <= MILESTONE_STEP:
         return run_start_best
-    if run_start_best > score:
+    if run_start_best > safe_score:
         return mini(run_start_best, next_milestone)
     return next_milestone
 
@@ -17,6 +18,16 @@ static func label_for(score: int, run_start_best: int) -> String:
     if run_start_best > score and target == run_start_best:
         return "BEST IN %d" % remaining
     return "TARGET %d  •  %d TO GO" % [target, remaining]
+
+static func progress_ratio(score: int, target: int, run_start_best: int) -> float:
+    if target <= 0:
+        return 0.0
+    var start := maxi(0, target - MILESTONE_STEP)
+    if run_start_best > 0 and target == run_start_best:
+        start = maxi(0, run_start_best - MILESTONE_STEP)
+    if target <= start:
+        return 1.0
+    return clampf(float(score - start) / float(target - start), 0.0, 1.0)
 
 static func is_near_best(score: int, run_start_best: int) -> bool:
     if run_start_best <= 0 or score >= run_start_best:
