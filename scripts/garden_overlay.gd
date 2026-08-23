@@ -2,9 +2,9 @@ extends Node2D
 
 const GardenProgressScript = preload("res://scripts/garden_progress.gd")
 
-const VINE := Color("4fa87b")
-const LEAF := Color("72c997")
-const LEAF_DARK := Color("397a60")
+const VINE := Color("57b486")
+const LEAF := Color("79d3a0")
+const LEAF_DARK := Color("3f8b69")
 const ACCENT := Color("ffc15b")
 const FLOWER_COLORS := [
     Color("ffc15b"),
@@ -50,7 +50,7 @@ func _build_slots() -> void:
             "side": side,
             "u": u,
             "phase": fmod(float(i) * 1.731, TAU),
-            "size": 3.1 + float(i % 4) * 0.42
+            "size": 3.75 + float(i % 4) * 0.48
         })
 
 func _process(delta: float) -> void:
@@ -120,28 +120,31 @@ func _draw() -> void:
     if stage_timer > 0.0:
         _draw_stage_transition(board_pos, board_size)
 
+func _draw_vine_segment(from: Vector2, to: Vector2, alpha: float = 0.58) -> void:
+    draw_line(from, to, Color(VINE, alpha * 0.18), 5.0, true)
+    draw_line(from, to, Color(VINE, alpha), 2.5, true)
+
 func _draw_vines(frame: Rect2, stage: int) -> void:
-    var color := Color(VINE, 0.42)
     var bottom_y := frame.end.y - 1.0
     var left_x := frame.position.x + 1.0
     var right_x := frame.end.x - 1.0
     var top_y := frame.position.y + 1.0
 
     if stage == 0:
-        draw_line(Vector2(frame.position.x + 22, bottom_y), Vector2(frame.position.x + frame.size.x * 0.30, bottom_y), color, 2.0, true)
-        draw_line(Vector2(frame.end.x - 22, bottom_y), Vector2(frame.position.x + frame.size.x * 0.70, bottom_y), color, 2.0, true)
+        _draw_vine_segment(Vector2(frame.position.x + 22, bottom_y), Vector2(frame.position.x + frame.size.x * 0.30, bottom_y), 0.46)
+        _draw_vine_segment(Vector2(frame.end.x - 22, bottom_y), Vector2(frame.position.x + frame.size.x * 0.70, bottom_y), 0.46)
         return
 
-    draw_line(Vector2(frame.position.x + 18, bottom_y), Vector2(frame.end.x - 18, bottom_y), color, 2.0, true)
+    _draw_vine_segment(Vector2(frame.position.x + 18, bottom_y), Vector2(frame.end.x - 18, bottom_y))
 
     if stage >= 1:
-        draw_line(Vector2(left_x, frame.end.y - 18), Vector2(left_x, frame.position.y + frame.size.y * 0.55), color, 2.0, true)
-        draw_line(Vector2(right_x, frame.end.y - 18), Vector2(right_x, frame.position.y + frame.size.y * 0.55), color, 2.0, true)
+        _draw_vine_segment(Vector2(left_x, frame.end.y - 18), Vector2(left_x, frame.position.y + frame.size.y * 0.55))
+        _draw_vine_segment(Vector2(right_x, frame.end.y - 18), Vector2(right_x, frame.position.y + frame.size.y * 0.55))
     if stage >= 2:
-        draw_line(Vector2(left_x, frame.position.y + frame.size.y * 0.55), Vector2(left_x, frame.position.y + 18), color, 2.0, true)
-        draw_line(Vector2(right_x, frame.position.y + frame.size.y * 0.55), Vector2(right_x, frame.position.y + 18), color, 2.0, true)
+        _draw_vine_segment(Vector2(left_x, frame.position.y + frame.size.y * 0.55), Vector2(left_x, frame.position.y + 18))
+        _draw_vine_segment(Vector2(right_x, frame.position.y + frame.size.y * 0.55), Vector2(right_x, frame.position.y + 18))
     if stage >= 3:
-        draw_line(Vector2(frame.position.x + 18, top_y), Vector2(frame.end.x - 18, top_y), color, 2.0, true)
+        _draw_vine_segment(Vector2(frame.position.x + 18, top_y), Vector2(frame.end.x - 18, top_y))
 
 func _draw_plants(frame: Rect2, level: int) -> void:
     var visible_count := GardenProgressScript.visible_plant_count(level)
@@ -160,7 +163,7 @@ func _draw_plants(frame: Rect2, level: int) -> void:
         var side := int(slot["side"])
         var position := _perimeter_position(frame, side, float(slot["u"]))
         var inward := -_outward_for_side(side)
-        var sway := sin(elapsed * 1.4 + float(slot["phase"])) * 0.8
+        var sway := sin(elapsed * 1.4 + float(slot["phase"])) * 0.95
         position += _tangent_for_side(side) * sway
         var species := mini(int(slot["stage"]), GardenProgressScript.species_count(level) - 1)
         _draw_plant(position, inward, species, float(slot["size"]) * scale)
@@ -195,11 +198,12 @@ func _tangent_for_side(side: int) -> Vector2:
 
 func _draw_plant(anchor: Vector2, inward: Vector2, species: int, size: float) -> void:
     var stem_end := anchor + inward * (size * 2.4)
-    draw_line(anchor, stem_end, Color(VINE, 0.82), maxf(1.0, size * 0.34), true)
+    draw_line(anchor, stem_end, Color(VINE, 0.20), maxf(2.4, size * 0.62), true)
+    draw_line(anchor, stem_end, Color(VINE, 0.90), maxf(1.2, size * 0.36), true)
 
     var tangent := Vector2(-inward.y, inward.x)
-    _draw_leaf(anchor + inward * size * 0.8 + tangent * size * 0.40, inward + tangent * 0.65, size * 0.78, Color(LEAF, 0.82))
-    _draw_leaf(anchor + inward * size * 1.45 - tangent * size * 0.38, inward - tangent * 0.65, size * 0.68, Color(LEAF_DARK, 0.84))
+    _draw_leaf(anchor + inward * size * 0.8 + tangent * size * 0.40, inward + tangent * 0.65, size * 0.82, Color(LEAF, 0.90))
+    _draw_leaf(anchor + inward * size * 1.45 - tangent * size * 0.38, inward - tangent * 0.65, size * 0.72, Color(LEAF_DARK, 0.90))
 
     if species <= 0:
         return
@@ -208,17 +212,17 @@ func _draw_plant(anchor: Vector2, inward: Vector2, species: int, size: float) ->
     var flower_color: Color = FLOWER_COLORS[(species - 1) % FLOWER_COLORS.size()]
 
     if species == 1:
-        draw_circle(flower_center, size * 0.52, Color(flower_color, 0.72))
-        draw_circle(flower_center + inward * size * 0.08, size * 0.22, Color(ACCENT, 0.72))
+        draw_circle(flower_center, size * 0.60, Color(flower_color, 0.78))
+        draw_circle(flower_center + inward * size * 0.08, size * 0.25, Color(ACCENT, 0.82))
         return
 
     var petals := 4 + mini(species, 3)
-    var petal_radius := size * (0.54 + float(species) * 0.035)
+    var petal_radius := size * (0.56 + float(species) * 0.04)
     for i in range(petals):
         var angle := TAU * float(i) / float(petals)
         var petal_center := flower_center + Vector2(cos(angle), sin(angle)) * petal_radius
-        draw_circle(petal_center, size * 0.42, Color(flower_color, 0.88))
-    draw_circle(flower_center, size * 0.34, Color(ACCENT, 0.94))
+        draw_circle(petal_center, size * 0.46, Color(flower_color, 0.92))
+    draw_circle(flower_center, size * 0.36, Color(ACCENT, 0.98))
 
 func _draw_leaf(center: Vector2, direction: Vector2, size: float, color: Color) -> void:
     var dir := direction.normalized()
