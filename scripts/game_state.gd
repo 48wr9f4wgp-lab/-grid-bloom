@@ -56,7 +56,7 @@ func reset() -> void:
 
 func _generate_batch() -> void:
     piece_slots.clear()
-    for i in range(3):
+    for _i in range(3):
         var shape_index := _weighted_shape_index()
         piece_slots.append({
             "shape": SHAPES[shape_index],
@@ -73,13 +73,62 @@ func _weighted_shape_index() -> int:
     return rng.randi_range(19, SHAPES.size() - 1)
 
 func can_place(shape: Array, origin: Vector2i) -> bool:
-    for cell in shape:
+    for raw_cell in shape:
+        var cell: Vector2i = raw_cell
         var p: Vector2i = origin + cell
         if p.x < 0 or p.y < 0 or p.x >= BOARD_SIZE or p.y >= BOARD_SIZE:
             return false
         if board[p.y][p.x] != EMPTY:
             return false
     return true
+
+func can_place_anywhere(shape: Array) -> bool:
+    for y in range(BOARD_SIZE):
+        for x in range(BOARD_SIZE):
+            if can_place(shape, Vector2i(x, y)):
+                return true
+    return false
+
+func slot_has_move(slot_index: int) -> bool:
+    if slot_index < 0 or slot_index >= piece_slots.size():
+        return false
+    var slot: Dictionary = piece_slots[slot_index]
+    if slot["used"]:
+        return false
+    return can_place_anywhere(slot["shape"])
+
+func preview_clears(shape: Array, origin: Vector2i) -> Dictionary:
+    var full_rows: Array[int] = []
+    var full_cols: Array[int] = []
+    if not can_place(shape, origin):
+        return {"rows": full_rows, "cols": full_cols}
+
+    var placed_cells := {}
+    for raw_cell in shape:
+        var cell: Vector2i = raw_cell
+        placed_cells[origin + cell] = true
+
+    for y in range(BOARD_SIZE):
+        var full := true
+        for x in range(BOARD_SIZE):
+            var p := Vector2i(x, y)
+            if board[y][x] == EMPTY and not placed_cells.has(p):
+                full = false
+                break
+        if full:
+            full_rows.append(y)
+
+    for x in range(BOARD_SIZE):
+        var full := true
+        for y in range(BOARD_SIZE):
+            var p := Vector2i(x, y)
+            if board[y][x] == EMPTY and not placed_cells.has(p):
+                full = false
+                break
+        if full:
+            full_cols.append(x)
+
+    return {"rows": full_rows, "cols": full_cols}
 
 func place(slot_index: int, origin: Vector2i) -> Dictionary:
     if game_over or slot_index < 0 or slot_index >= piece_slots.size():
@@ -91,7 +140,8 @@ func place(slot_index: int, origin: Vector2i) -> Dictionary:
     if not can_place(shape, origin):
         return {"ok": false}
 
-    for cell in shape:
+    for raw_cell in shape:
+        var cell: Vector2i = raw_cell
         var p: Vector2i = origin + cell
         board[p.y][p.x] = slot["color"]
 
@@ -163,7 +213,8 @@ func _clear_complete_lines() -> Dictionary:
             cell_set[Vector2i(x, y)] = true
 
     var cleared_cells: Array = cell_set.keys()
-    for p in cleared_cells:
+    for raw_p in cleared_cells:
+        var p: Vector2i = raw_p
         board[p.y][p.x] = EMPTY
 
     return {
@@ -175,17 +226,15 @@ func has_any_move() -> bool:
     for slot in piece_slots:
         if slot["used"]:
             continue
-        var shape: Array = slot["shape"]
-        for y in range(BOARD_SIZE):
-            for x in range(BOARD_SIZE):
-                if can_place(shape, Vector2i(x, y)):
-                    return true
+        if can_place_anywhere(slot["shape"]):
+            return true
     return false
 
 func shape_bounds(shape: Array) -> Vector2i:
     var max_x := 0
     var max_y := 0
-    for cell in shape:
+    for raw_cell in shape:
+        var cell: Vector2i = raw_cell
         max_x = maxi(max_x, cell.x)
         max_y = maxi(max_y, cell.y)
     return Vector2i(max_x + 1, max_y + 1)
