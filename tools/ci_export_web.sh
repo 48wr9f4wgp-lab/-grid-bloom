@@ -24,11 +24,28 @@ if grep -Eiq 'SCRIPT ERROR|Parse Error|Failed to load script' "$LOG_FILE"; then
   exit 1
 fi
 
+cp web/manifest.webmanifest "$OUT_DIR/manifest.webmanifest"
+cp assets/app_icon.svg "$OUT_DIR/app_icon.svg"
 touch "$OUT_DIR/.nojekyll"
 
-for required in index.html index.js index.wasm index.pck; do
+for required in index.html index.js index.wasm index.pck manifest.webmanifest app_icon.svg; do
   if [[ ! -f "$OUT_DIR/$required" ]]; then
     echo "Web export failed: $required not found" >&2
     exit 1
   fi
 done
+
+if ! grep -q 'apple-mobile-web-app-capable' "$OUT_DIR/index.html"; then
+  echo "Mobile standalone metadata missing from index.html" >&2
+  exit 1
+fi
+
+if ! grep -q 'manifest.webmanifest' "$OUT_DIR/index.html"; then
+  echo "Web app manifest link missing from index.html" >&2
+  exit 1
+fi
+
+if ! grep -q '"display": "standalone"' "$OUT_DIR/manifest.webmanifest"; then
+  echo "Web app manifest is not configured for standalone display" >&2
+  exit 1
+fi

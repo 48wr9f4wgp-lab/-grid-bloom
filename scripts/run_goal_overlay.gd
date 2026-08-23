@@ -125,14 +125,14 @@ func _draw_run_goal(view: Vector2, score: int, run_start_best: int) -> void:
     var target := RunGoalScript.target_for(score, run_start_best)
     var label := RunGoalScript.label_for(score, run_start_best)
     var near_best := RunGoalScript.is_near_best(score, run_start_best)
-    var panel := Rect2(Vector2((view.x - 216.0) * 0.5, 118.0), Vector2(216.0, 34.0))
+    var panel := Rect2(Vector2((view.x - 216.0) * 0.5, 108.0), Vector2(216.0, 32.0))
     var panel_color := Color(PANEL_2, 0.86 if near_best else 0.68)
     _draw_round_rect(panel, panel_color, 13.0)
 
     var label_color := ACCENT if near_best else MUTED
-    draw_string(font, Vector2(panel.position.x, panel.position.y + 15), label, HORIZONTAL_ALIGNMENT_CENTER, panel.size.x, 10, label_color)
+    draw_string(font, Vector2(panel.position.x, panel.position.y + 14), label, HORIZONTAL_ALIGNMENT_CENTER, panel.size.x, 10, label_color)
 
-    var bar := Rect2(Vector2(panel.position.x + 18.0, panel.position.y + 22.0), Vector2(panel.size.x - 36.0, 5.0))
+    var bar := Rect2(Vector2(panel.position.x + 18.0, panel.position.y + 21.0), Vector2(panel.size.x - 36.0, 5.0))
     _draw_round_rect(bar, Color(BG, 0.72), 3.0)
     var ratio := RunGoalScript.progress_ratio(score, target, run_start_best)
     if ratio > 0.0:
