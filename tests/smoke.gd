@@ -13,6 +13,7 @@ func _init() -> void:
     _test_fair_batch_generation()
     _test_bloom_level_curve()
     _test_run_goal_curve()
+    _test_full_bloom_bonus()
 
     if failures.is_empty():
         print("SMOKE_OK")
@@ -107,3 +108,25 @@ func _test_run_goal_curve() -> void:
     _expect(RunGoalScript.result_title(1100, 1000) == "NEW BEST", "best-beating run should get new-best title")
     _expect(RunGoalScript.retry_cta(920, 1000) == "BEAT YOUR BEST", "near miss should get a stronger retry CTA")
     _expect(is_equal_approx(RunGoalScript.progress_ratio(250, 500, 0), 0.5), "milestone progress should be proportional")
+
+func _test_full_bloom_bonus() -> void:
+    var game = GameStateScript.new()
+    for x in range(7):
+        game.board[0][x] = 0
+
+    var single := [Vector2i(0, 0)]
+    game.piece_slots = [
+        {"shape": single, "color": 1, "used": false},
+        {"shape": single, "color": 2, "used": false},
+        {"shape": single, "color": 3, "used": false}
+    ]
+    game.bloom_charge = 4
+
+    var result: Dictionary = game.place(0, Vector2i(7, 0))
+    _expect(bool(result.get("ok", false)), "Full Bloom trigger placement should succeed")
+    _expect(int(result.get("lines", 0)) == 1, "Full Bloom test should clear one line")
+    _expect(int(result.get("bloom_triggered", 0)) == 1, "fifth cleared line should trigger Full Bloom")
+    _expect(int(result.get("bloom_bonus", 0)) == GameStateScript.BLOOM_BONUS, "Full Bloom should award the configured bonus")
+    _expect(game.bloom_charge == 0, "Full Bloom should consume five charge")
+    _expect(game.bloom_bursts == 1, "Full Bloom burst counter should advance")
+    _expect(int(result.get("score_gain", 0)) == 328, "single-cell line clear at Full Bloom should gain 8 + 120 + 200")
