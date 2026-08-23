@@ -3,6 +3,7 @@ extends SceneTree
 const GameStateScript = preload("res://scripts/game_state.gd")
 const SaveServiceScript = preload("res://scripts/save_service.gd")
 const RunGoalScript = preload("res://scripts/run_goal.gd")
+const GardenProgressScript = preload("res://scripts/garden_progress.gd")
 
 var failures: Array[String] = []
 
@@ -14,6 +15,7 @@ func _init() -> void:
     _test_bloom_level_curve()
     _test_run_goal_curve()
     _test_full_bloom_bonus()
+    _test_garden_progression()
 
     if failures.is_empty():
         print("SMOKE_OK")
@@ -130,3 +132,18 @@ func _test_full_bloom_bonus() -> void:
     _expect(game.bloom_charge == 0, "Full Bloom should consume five charge")
     _expect(game.bloom_bursts == 1, "Full Bloom burst counter should advance")
     _expect(int(result.get("score_gain", 0)) == 328, "single-cell line clear at Full Bloom should gain 8 + 120 + 200")
+
+func _test_garden_progression() -> void:
+    _expect(GardenProgressScript.stage_index(1) == 0, "Bloom level 1 should use Seedling stage")
+    _expect(GardenProgressScript.stage_name(3) == "VINES", "Bloom level 3 should unlock Vines")
+    _expect(GardenProgressScript.stage_name(5) == "BLOSSOM", "Bloom level 5 should unlock Blossom")
+    _expect(GardenProgressScript.stage_name(8) == "GARDEN", "Bloom level 8 should unlock Garden")
+    _expect(GardenProgressScript.stage_name(12) == "STARLIGHT", "Bloom level 12 should unlock Starlight")
+    _expect(GardenProgressScript.visible_plant_count(1) == 2, "first garden level should show two plants")
+    _expect(GardenProgressScript.visible_plant_count(4) == 8, "each Bloom level should add persistent garden detail")
+    _expect(GardenProgressScript.plant_unlock_level(0) == 1 and GardenProgressScript.plant_unlock_level(1) == 1, "first two plant slots should unlock at level 1")
+    _expect(GardenProgressScript.plant_unlock_level(2) == 2, "third plant slot should unlock at level 2")
+    _expect(GardenProgressScript.next_stage_level(1) == 3, "Seedling should point to Vines at level 3")
+    _expect(GardenProgressScript.next_stage_level(12) == 0, "Starlight should have no next v1 stage")
+    _expect(GardenProgressScript.is_stage_transition(4, 5), "level 5 should be a named garden stage transition")
+    _expect(not GardenProgressScript.is_stage_transition(5, 6), "levels inside one garden stage should not trigger a stage transition")
