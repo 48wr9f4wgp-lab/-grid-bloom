@@ -128,9 +128,9 @@ func _draw() -> void:
         _draw_petal(petal_pos, float(petal["size"]), float(petal["angle"]), Color(petal_color, alpha))
 
 func _draw_charge_meter(view: Vector2, board_pos: Vector2, charge: int) -> void:
-    var y := board_pos.y - 12.0
+    var y := board_pos.y - 16.0
     var label := "BLOOM %d / 5" % clampi(charge, 0, 4)
-    draw_string(ThemeDB.fallback_font, Vector2(0, y + 3.0), label, HORIZONTAL_ALIGNMENT_CENTER, view.x, 9, Color(MUTED, 0.82))
+    draw_string(ThemeDB.fallback_font, Vector2(0, y + 4.0), label, HORIZONTAL_ALIGNMENT_CENTER, view.x, 9, Color(MUTED, 0.88))
 
     var start_x := view.x * 0.5 - 38.0
     for i in range(5):
