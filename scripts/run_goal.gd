@@ -5,7 +5,8 @@ const MILESTONE_STEP := 500
 
 static func target_for(score: int, run_start_best: int) -> int:
     var safe_score := maxi(score, 0)
-    var next_milestone := ((safe_score / MILESTONE_STEP) + 1) * MILESTONE_STEP
+    var bucket := int(floor(float(safe_score) / float(MILESTONE_STEP)))
+    var next_milestone := (bucket + 1) * MILESTONE_STEP
     if run_start_best > safe_score and run_start_best - safe_score <= MILESTONE_STEP:
         return run_start_best
     if run_start_best > safe_score:
