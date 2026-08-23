@@ -322,7 +322,7 @@ func _draw_header(view: Vector2) -> void:
 
 func _draw_board() -> void:
     var frame := Rect2(board_pos - Vector2(8, 8), Vector2(board_size + 16, board_size + 16))
-    _draw_round_rect(frame.translated(Vector2(0, 3)), Color(0, 0, 0, 0.22), 20.0)
+    _draw_round_rect(Rect2(frame.position + Vector2(0, 3), frame.size), Color(0, 0, 0, 0.22), 20.0)
     _draw_round_rect(frame, PANEL, 20.0)
 
     if drag_valid and (not preview_rows.is_empty() or not preview_cols.is_empty()):
@@ -437,7 +437,7 @@ func _draw_effects() -> void:
 func _draw_game_over(view: Vector2) -> void:
     draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.68), true)
     var card := Rect2(Vector2(30, view.y * 0.30), Vector2(view.x - 60, 268))
-    _draw_round_rect(card.translated(Vector2(0, 5)), Color(0, 0, 0, 0.3), 26.0)
+    _draw_round_rect(Rect2(card.position + Vector2(0, 5), card.size), Color(0, 0, 0, 0.3), 26.0)
     _draw_round_rect(card, Color("132b34"), 26.0)
     var font := ThemeDB.fallback_font
     var title := "NEW BEST" if game.score > best_at_run_start else "NO MORE MOVES"
@@ -446,7 +446,7 @@ func _draw_game_over(view: Vector2) -> void:
     draw_string(font, Vector2(card.position.x, card.position.y + 112), str(game.score), HORIZONTAL_ALIGNMENT_CENTER, card.size.x, 46, TEXT)
     draw_string(font, Vector2(card.position.x, card.position.y + 140), "BEST  %d" % best_score, HORIZONTAL_ALIGNMENT_CENTER, card.size.x, 13, MUTED)
     var button := _restart_rect()
-    _draw_round_rect(button.translated(Vector2(0, 3)), Color(0, 0, 0, 0.24), 18.0)
+    _draw_round_rect(Rect2(button.position + Vector2(0, 3), button.size), Color(0, 0, 0, 0.24), 18.0)
     _draw_round_rect(button, ACCENT, 18.0)
     draw_string(font, Vector2(button.position.x, button.position.y + 37), "PLAY AGAIN", HORIZONTAL_ALIGNMENT_CENTER, button.size.x, 18, BG)
 
@@ -456,7 +456,7 @@ func _restart_rect() -> Rect2:
 
 func _draw_block(rect: Rect2, color: Color) -> void:
     var radius := minf(10.0, rect.size.x * 0.20)
-    _draw_round_rect(rect.translated(Vector2(0, 2)), Color(0, 0, 0, color.a * 0.22), radius)
+    _draw_round_rect(Rect2(rect.position + Vector2(0, 2), rect.size), Color(0, 0, 0, color.a * 0.22), radius)
     _draw_round_rect(rect, color, radius)
     var shine := Rect2(rect.position + Vector2(rect.size.x * 0.12, rect.size.y * 0.10), Vector2(rect.size.x * 0.72, rect.size.y * 0.13))
     _draw_round_rect(shine, Color(1, 1, 1, color.a * 0.13), rect.size.y * 0.07)
