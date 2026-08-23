@@ -20,7 +20,7 @@ static func visible_plant_count(level: int) -> int:
     return mini(MAX_PLANTS, 2 + maxi(level - 1, 0) * 2)
 
 static func plant_unlock_level(slot_index: int) -> int:
-    return 1 + maxi(slot_index, 0) / 2
+    return 1 + int(maxi(slot_index, 0) / 2)
 
 static func species_count(level: int) -> int:
     return mini(5, stage_index(level) + 1)
