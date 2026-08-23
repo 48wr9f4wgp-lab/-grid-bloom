@@ -274,7 +274,7 @@ func _draw_board() -> void:
         var shape: Array = game.piece_slots[drag_slot]["shape"]
         var ghost_color := GOOD if drag_valid else BAD
         for cell in shape:
-            var p := drag_candidate + cell
+            var p: Vector2i = drag_candidate + cell
             if p.x < 0 or p.y < 0 or p.x >= 8 or p.y >= 8:
                 continue
             var rect := Rect2(
