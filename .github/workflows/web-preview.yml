@@ -1,0 +1,57 @@
+name: Build Web preview
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Godot and export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          GODOT_BASE="Godot_v${GODOT_VERSION}-stable"
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${GODOT_BASE}_linux.x86_64.zip"
+          unzip -q "${GODOT_BASE}_linux.x86_64.zip"
+          chmod +x "${GODOT_BASE}_linux.x86_64"
+
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${GODOT_BASE}_export_templates.tpz"
+          rm -rf /tmp/godot-templates
+          mkdir -p /tmp/godot-templates
+          unzip -q "${GODOT_BASE}_export_templates.tpz" -d /tmp/godot-templates
+
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$TEMPLATE_DIR"
+          cp -R /tmp/godot-templates/templates/. "$TEMPLATE_DIR/"
+
+      - name: Export Web build
+        shell: bash
+        run: |
+          GODOT_BIN="./Godot_v${GODOT_VERSION}-stable_linux.x86_64" bash ./tools/ci_export_web.sh
+
+      - name: Verify build output
+        shell: bash
+        run: |
+          test -f build/web/index.html
+          test -f build/web/index.wasm
+          test -f build/web/index.pck
+          find build/web -maxdepth 1 -type f -printf '%f\n' | sort
+
+      - name: Upload Web preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: grid-bloom-web
+          path: build/web
+          if-no-files-found: error
