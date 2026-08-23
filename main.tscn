@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource path="res://scripts/main.gd" type="Script" id="1_main"]
+[ext_resource path="res://scripts/run_goal_overlay.gd" type="Script" id="2_goal"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
+
+[node name="RunGoalOverlay" type="Node2D" parent="."]
+script = ExtResource("2_goal")
