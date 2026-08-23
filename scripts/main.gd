@@ -27,6 +27,14 @@ var game = GameStateScript.new()
 var analytics = AnalyticsScript.new()
 var best_score := 0
 var best_at_run_start := 0
+var total_lines := 0
+var total_runs := 0
+var all_time_best_combo := 0
+var bloom_level := 1
+var bloom_progress := 0
+var bloom_need := 6
+var run_lines := 0
+var run_best_combo := 0
 
 var board_pos := Vector2.ZERO
 var board_size := 0.0
@@ -51,6 +59,8 @@ var score_pop_text := ""
 var score_pop_pos := Vector2.ZERO
 var tray_spawn_timer := 0.55
 var error_hint_timer := 0.0
+var level_up_timer := 0.0
+var level_up_text := ""
 var game_over_animated := false
 var tutorial_stage := 0
 
@@ -59,8 +69,15 @@ var clear_audio := AudioStreamPlayer.new()
 var over_audio := AudioStreamPlayer.new()
 
 func _ready() -> void:
-    best_score = SaveServiceScript.load_best()
+    var profile: Dictionary = SaveServiceScript.load_profile()
+    best_score = int(profile["best_score"])
     best_at_run_start = best_score
+    total_lines = int(profile["total_lines"])
+    total_runs = int(profile["total_runs"])
+    all_time_best_combo = int(profile["best_combo"])
+    bloom_level = int(profile["bloom_level"])
+    bloom_progress = int(profile["bloom_progress"])
+    bloom_need = int(profile["bloom_need"])
     add_child(place_audio)
     add_child(clear_audio)
     add_child(over_audio)
@@ -69,7 +86,11 @@ func _ready() -> void:
     over_audio.stream = _make_tone(180.0, 0.18, 0.20)
     get_viewport().size_changed.connect(_recompute_layout)
     _recompute_layout()
-    analytics.event("session_start", {"best_score": best_score})
+    analytics.event("session_start", {
+        "best_score": best_score,
+        "bloom_level": bloom_level,
+        "total_lines": total_lines
+    })
     queue_redraw()
 
 func _make_tone(frequency: float, duration: float, volume: float) -> AudioStreamWAV:
@@ -128,12 +149,23 @@ func _process(delta: float) -> void:
     if error_hint_timer > 0.0:
         error_hint_timer -= delta
         redraw = true
+    if level_up_timer > 0.0:
+        level_up_timer -= delta
+        redraw = true
 
     if game.game_over and not game_over_animated:
         game_over_animated = true
+        SaveServiceScript.record_run()
+        total_runs += 1
         over_audio.play()
         Input.vibrate_handheld(90)
-        analytics.event("game_over", {"score": game.score, "best_score": best_score})
+        analytics.event("game_over", {
+            "score": game.score,
+            "best_score": best_score,
+            "run_lines": run_lines,
+            "run_best_combo": run_best_combo,
+            "bloom_level": bloom_level
+        })
         redraw = true
     if redraw:
         queue_redraw()
@@ -247,8 +279,31 @@ func _on_piece_placed(result: Dictionary) -> void:
     if bool(result["new_batch"]):
         tray_spawn_timer = 0.5
 
-    if int(result["lines"]) > 0:
+    var lines := int(result["lines"])
+    var combo := int(result["combo"])
+    if lines > 0:
         tutorial_stage = 2
+        run_lines += lines
+        run_best_combo = maxi(run_best_combo, combo)
+        all_time_best_combo = maxi(all_time_best_combo, combo)
+
+        var previous_level := bloom_level
+        var level_info: Dictionary = SaveServiceScript.add_lines(lines, combo)
+        total_lines += lines
+        bloom_level = int(level_info["level"])
+        bloom_progress = int(level_info["progress"])
+        bloom_need = int(level_info["need"])
+
+        if bloom_level > previous_level:
+            level_up_text = "BLOOM LEVEL %d" % bloom_level
+            level_up_timer = 1.35
+            Input.vibrate_handheld(68)
+            analytics.event("bloom_level_up", {
+                "from_level": previous_level,
+                "to_level": bloom_level,
+                "total_lines": total_lines
+            })
+
         clear_audio.play()
         Input.vibrate_handheld(40)
         for raw_cell in result["cleared_cells"]:
@@ -256,13 +311,15 @@ func _on_piece_placed(result: Dictionary) -> void:
             clear_flashes.append({"cell": cell, "life": 0.36})
             var center := board_pos + Vector2((cell.x + 0.5) * cell_size, (cell.y + 0.5) * cell_size)
             clear_rings.append({"pos": center, "life": 0.44, "max_life": 0.44})
-        if int(result["combo"]) >= 2:
-            combo_text = "COMBO x%d" % int(result["combo"])
+        if combo >= 2:
+            combo_text = "COMBO x%d" % combo
             combo_timer = 1.0
         analytics.event("line_clear", {
-            "lines": result["lines"],
-            "combo": result["combo"],
-            "score": game.score
+            "lines": lines,
+            "combo": combo,
+            "score": game.score,
+            "bloom_level": bloom_level,
+            "bloom_progress": bloom_progress
         })
 
     if game.score > best_score:
@@ -272,6 +329,8 @@ func _on_piece_placed(result: Dictionary) -> void:
 func _restart() -> void:
     analytics.event("restart", {"previous_score": game.score})
     best_at_run_start = best_score
+    run_lines = 0
+    run_best_combo = 0
     game.reset()
     drag_slot = -1
     drag_candidate = Vector2i(-99, -99)
@@ -284,6 +343,7 @@ func _restart() -> void:
     score_pop_timer = 0.0
     tray_spawn_timer = 0.5
     error_hint_timer = 0.0
+    level_up_timer = 0.0
     game_over_animated = false
     queue_redraw()
 
@@ -307,14 +367,21 @@ func _draw_background(view: Vector2) -> void:
 
 func _draw_header(view: Vector2) -> void:
     var font := ThemeDB.fallback_font
-    draw_string(font, Vector2(18, 34), "GRID BLOOM", HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color(ACCENT, 0.92))
+    draw_string(font, Vector2(18, 28), "GRID BLOOM", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(ACCENT, 0.92))
+    draw_string(font, Vector2(18, 47), "BLOOM %d" % bloom_level, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MUTED)
+
+    var bloom_bar := Rect2(Vector2(18, 53), Vector2(122, 5))
+    _draw_round_rect(bloom_bar, Color(PANEL_2, 0.92), 3.0)
+    var bloom_ratio := clampf(float(bloom_progress) / float(maxi(bloom_need, 1)), 0.0, 1.0)
+    if bloom_ratio > 0.0:
+        _draw_round_rect(Rect2(bloom_bar.position, Vector2(bloom_bar.size.x * bloom_ratio, bloom_bar.size.y)), ACCENT, 3.0)
 
     var best_card := Rect2(Vector2(view.x - 112, 16), Vector2(94, 48))
     _draw_round_rect(best_card, Color(PANEL_2, 0.72), 15.0)
     draw_string(font, Vector2(best_card.position.x, best_card.position.y + 17), "BEST", HORIZONTAL_ALIGNMENT_CENTER, best_card.size.x, 10, MUTED)
     draw_string(font, Vector2(best_card.position.x, best_card.position.y + 38), str(best_score), HORIZONTAL_ALIGNMENT_CENTER, best_card.size.x, 17, TEXT)
 
-    draw_string(font, Vector2(0, 92), str(game.score), HORIZONTAL_ALIGNMENT_CENTER, view.x, 44, TEXT)
+    draw_string(font, Vector2(0, 94), str(game.score), HORIZONTAL_ALIGNMENT_CENTER, view.x, 44, TEXT)
     if score_pop_timer > 0.0:
         var alpha := clampf(score_pop_timer / 0.72, 0.0, 1.0)
         var rise := (1.0 - alpha) * 18.0
@@ -434,17 +501,34 @@ func _draw_effects() -> void:
         var font_size := int(28 * scale_bonus)
         draw_string(ThemeDB.fallback_font, Vector2(0, board_pos.y + board_size * 0.48), combo_text, HORIZONTAL_ALIGNMENT_CENTER, view.x, font_size, Color(ACCENT.r, ACCENT.g, ACCENT.b, alpha))
 
+    if level_up_timer > 0.0:
+        var view := get_viewport_rect().size
+        var alpha := clampf(level_up_timer / 0.4, 0.0, 1.0)
+        var pulse := 1.0 + sin(level_up_timer * 10.0) * 0.04
+        var font_size := int(27 * pulse)
+        var y := board_pos.y + board_size * 0.18
+        draw_string(ThemeDB.fallback_font, Vector2(0, y), level_up_text, HORIZONTAL_ALIGNMENT_CENTER, view.x, font_size, Color(ACCENT.r, ACCENT.g, ACCENT.b, alpha))
+
 func _draw_game_over(view: Vector2) -> void:
     draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.68), true)
-    var card := Rect2(Vector2(30, view.y * 0.30), Vector2(view.x - 60, 268))
+    var card := Rect2(Vector2(30, view.y * 0.30), Vector2(view.x - 60, 310))
     _draw_round_rect(Rect2(card.position + Vector2(0, 5), card.size), Color(0, 0, 0, 0.3), 26.0)
     _draw_round_rect(card, Color("132b34"), 26.0)
     var font := ThemeDB.fallback_font
     var title := "NEW BEST" if game.score > best_at_run_start else "NO MORE MOVES"
     var title_color := ACCENT if game.score > best_at_run_start else TEXT
-    draw_string(font, Vector2(card.position.x, card.position.y + 52), title, HORIZONTAL_ALIGNMENT_CENTER, card.size.x, 23, title_color)
-    draw_string(font, Vector2(card.position.x, card.position.y + 112), str(game.score), HORIZONTAL_ALIGNMENT_CENTER, card.size.x, 46, TEXT)
-    draw_string(font, Vector2(card.position.x, card.position.y + 140), "BEST  %d" % best_score, HORIZONTAL_ALIGNMENT_CENTER, card.size.x, 13, MUTED)
+    draw_string(font, Vector2(card.position.x, card.position.y + 45), title, HORIZONTAL_ALIGNMENT_CENTER, card.size.x, 22, title_color)
+    draw_string(font, Vector2(card.position.x, card.position.y + 103), str(game.score), HORIZONTAL_ALIGNMENT_CENTER, card.size.x, 44, TEXT)
+    draw_string(font, Vector2(card.position.x, card.position.y + 130), "BEST  %d" % best_score, HORIZONTAL_ALIGNMENT_CENTER, card.size.x, 12, MUTED)
+    draw_string(font, Vector2(card.position.x, card.position.y + 162), "LINES +%d  •  BEST COMBO x%d" % [run_lines, run_best_combo], HORIZONTAL_ALIGNMENT_CENTER, card.size.x, 11, MUTED)
+    draw_string(font, Vector2(card.position.x, card.position.y + 188), "BLOOM %d  •  %d / %d" % [bloom_level, bloom_progress, bloom_need], HORIZONTAL_ALIGNMENT_CENTER, card.size.x, 12, ACCENT)
+
+    var progress_bar := Rect2(Vector2(card.position.x + 34, card.position.y + 198), Vector2(card.size.x - 68, 6))
+    _draw_round_rect(progress_bar, Color(PANEL_2, 0.95), 3.0)
+    var ratio := clampf(float(bloom_progress) / float(maxi(bloom_need, 1)), 0.0, 1.0)
+    if ratio > 0.0:
+        _draw_round_rect(Rect2(progress_bar.position, Vector2(progress_bar.size.x * ratio, progress_bar.size.y)), ACCENT, 3.0)
+
     var button := _restart_rect()
     _draw_round_rect(Rect2(button.position + Vector2(0, 3), button.size), Color(0, 0, 0, 0.24), 18.0)
     _draw_round_rect(button, ACCENT, 18.0)
@@ -452,7 +536,7 @@ func _draw_game_over(view: Vector2) -> void:
 
 func _restart_rect() -> Rect2:
     var view := get_viewport_rect().size
-    return Rect2(Vector2(58, view.y * 0.30 + 190), Vector2(view.x - 116, 56))
+    return Rect2(Vector2(58, view.y * 0.30 + 228), Vector2(view.x - 116, 56))
 
 func _draw_block(rect: Rect2, color: Color) -> void:
     var radius := minf(10.0, rect.size.x * 0.20)

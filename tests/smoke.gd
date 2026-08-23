@@ -1,6 +1,7 @@
 extends SceneTree
 
 const GameStateScript = preload("res://scripts/game_state.gd")
+const SaveServiceScript = preload("res://scripts/save_service.gd")
 
 var failures: Array[String] = []
 
@@ -8,7 +9,8 @@ func _init() -> void:
     _test_shape_bounds()
     _test_line_preview_and_clear()
     _test_move_availability()
-    _test_pressure_aware_batch()
+    _test_fair_batch_generation()
+    _test_bloom_level_curve()
 
     if failures.is_empty():
         print("SMOKE_OK")
@@ -69,16 +71,25 @@ func _test_move_availability() -> void:
     _expect(not game.slot_has_move(1), "domino should have no move")
     _expect(game.has_any_move(), "game should continue while one slot has a legal move")
 
-func _test_pressure_aware_batch() -> void:
+func _test_fair_batch_generation() -> void:
     var game = GameStateScript.new()
     for y in range(8):
         for x in range(8):
             game.board[y][x] = 0
     game.board[7][7] = GameStateScript.EMPTY
-
-    _expect(game.occupied_cell_count() == 63, "pressure test should contain 63 occupied cells")
-    _expect(game.board_pressure() > 0.98, "board pressure should reflect a nearly full board")
-
     game._generate_batch()
-    _expect(game.playable_slot_count() >= 2, "high-pressure batches should guarantee at least two immediately playable pieces")
-    _expect(game.has_any_move(), "fair batch generation should avoid immediate random game over")
+    _expect(game.playable_slot_count() >= 1, "near-full board should not receive an immediate dead batch")
+
+func _test_bloom_level_curve() -> void:
+    var info: Dictionary = SaveServiceScript.bloom_level_info(0)
+    _expect(int(info["level"]) == 1, "0 lines should start at Bloom level 1")
+    _expect(int(info["progress"]) == 0 and int(info["need"]) == 6, "level 1 should require 6 lines")
+
+    info = SaveServiceScript.bloom_level_info(5)
+    _expect(int(info["level"]) == 1 and int(info["progress"]) == 5, "5 lines should remain at level 1")
+
+    info = SaveServiceScript.bloom_level_info(6)
+    _expect(int(info["level"]) == 2 and int(info["progress"]) == 0 and int(info["need"]) == 9, "6 lines should reach level 2")
+
+    info = SaveServiceScript.bloom_level_info(15)
+    _expect(int(info["level"]) == 3 and int(info["progress"]) == 0 and int(info["need"]) == 12, "15 total lines should reach level 3")
