@@ -54,8 +54,12 @@ func _process(delta: float) -> void:
     if not petals.is_empty():
         for petal in petals:
             petal["life"] = float(petal["life"]) - delta
-            petal["pos"] = Vector2(petal["pos"]) + Vector2(petal["vel"]) * delta
-            petal["vel"] = Vector2(petal["vel"]) + Vector2(0, 68.0) * delta
+            var petal_pos: Vector2 = petal["pos"]
+            var petal_vel: Vector2 = petal["vel"]
+            petal_pos += petal_vel * delta
+            petal_vel += Vector2(0, 68.0) * delta
+            petal["pos"] = petal_pos
+            petal["vel"] = petal_vel
             petal["angle"] = float(petal["angle"]) + float(petal["spin"]) * delta
         petals = petals.filter(func(p): return float(p["life"]) > 0.0)
 
@@ -66,7 +70,9 @@ func _trigger_bloom(host, game, burst_count: int) -> void:
     bloom_audio.play()
     Input.vibrate_handheld(68)
 
-    var center := Vector2(host.get("board_pos")) + Vector2(float(host.get("board_size")), float(host.get("board_size"))) * 0.5
+    var board_origin: Vector2 = host.get("board_pos")
+    var size := float(host.get("board_size"))
+    var center := board_origin + Vector2(size, size) * 0.5
     for i in range(30 + maxi(0, burst_count - 1) * 8):
         var angle := rng.randf_range(-PI, PI)
         var speed := rng.randf_range(85.0, 205.0)
@@ -99,7 +105,7 @@ func _draw() -> void:
         return
 
     var view := get_viewport_rect().size
-    var board_pos := Vector2(host.get("board_pos"))
+    var board_pos: Vector2 = host.get("board_pos")
     var board_size := float(host.get("board_size"))
     if board_size <= 0.0:
         return
@@ -117,7 +123,9 @@ func _draw() -> void:
     for petal in petals:
         var life := float(petal["life"])
         var alpha := clampf(life / 0.32, 0.0, 1.0)
-        _draw_petal(Vector2(petal["pos"]), float(petal["size"]), float(petal["angle"]), Color(petal["color"], alpha))
+        var petal_pos: Vector2 = petal["pos"]
+        var petal_color: Color = petal["color"]
+        _draw_petal(petal_pos, float(petal["size"]), float(petal["angle"]), Color(petal_color, alpha))
 
 func _draw_charge_meter(view: Vector2, board_pos: Vector2, charge: int) -> void:
     var y := board_pos.y - 12.0
