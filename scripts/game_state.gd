@@ -3,6 +3,8 @@ extends RefCounted
 
 const BOARD_SIZE := 8
 const EMPTY := -1
+const BLOOM_LINES_PER_BURST := 5
+const BLOOM_BONUS := 200
 
 const SHAPES := [
     [Vector2i(0, 0)],
@@ -35,6 +37,8 @@ var board: Array = []
 var piece_slots: Array = []
 var score := 0
 var combo := 0
+var bloom_charge := 0
+var bloom_bursts := 0
 var game_over := false
 var rng := RandomNumberGenerator.new()
 
@@ -51,6 +55,8 @@ func reset() -> void:
         board.append(row)
     score = 0
     combo = 0
+    bloom_charge = 0
+    bloom_bursts = 0
     game_over = false
     _generate_batch()
 
@@ -207,7 +213,18 @@ func place(slot_index: int, origin: Vector2i) -> Dictionary:
         clear_score = 120 * lines * lines + (combo - 1) * 60
     else:
         combo = 0
-    score += placed_score + clear_score
+
+    var bloom_bonus := 0
+    var bloom_triggered := 0
+    if lines > 0:
+        bloom_charge += lines
+        while bloom_charge >= BLOOM_LINES_PER_BURST:
+            bloom_charge -= BLOOM_LINES_PER_BURST
+            bloom_bursts += 1
+            bloom_triggered += 1
+            bloom_bonus += BLOOM_BONUS
+
+    score += placed_score + clear_score + bloom_bonus
 
     var new_batch := _all_slots_used()
     if new_batch:
@@ -220,12 +237,16 @@ func place(slot_index: int, origin: Vector2i) -> Dictionary:
         "placed": shape.size(),
         "lines": lines,
         "cleared_cells": clear_result["cells"],
-        "score_gain": placed_score + clear_score,
+        "score_gain": placed_score + clear_score + bloom_bonus,
         "combo": combo,
         "new_batch": new_batch,
         "game_over": game_over,
         "board_pressure": board_pressure(),
-        "playable_slots": playable_slot_count()
+        "playable_slots": playable_slot_count(),
+        "bloom_charge": bloom_charge,
+        "bloom_bursts": bloom_bursts,
+        "bloom_triggered": bloom_triggered,
+        "bloom_bonus": bloom_bonus
     }
 
 func _all_slots_used() -> bool:
