@@ -1,0 +1,19 @@
+{
+  "name": "Grid Bloom",
+  "short_name": "Grid Bloom",
+  "description": "A tactile block puzzle where every clear grows your garden.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#09141b",
+  "theme_color": "#09141b",
+  "icons": [
+    {
+      "src": "app_icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
