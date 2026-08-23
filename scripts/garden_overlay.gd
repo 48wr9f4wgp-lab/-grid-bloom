@@ -206,6 +206,12 @@ func _draw_plant(anchor: Vector2, inward: Vector2, species: int, size: float) ->
 
     var flower_center := stem_end + inward * size * 0.12
     var flower_color: Color = FLOWER_COLORS[(species - 1) % FLOWER_COLORS.size()]
+
+    if species == 1:
+        draw_circle(flower_center, size * 0.52, Color(flower_color, 0.72))
+        draw_circle(flower_center + inward * size * 0.08, size * 0.22, Color(ACCENT, 0.72))
+        return
+
     var petals := 4 + mini(species, 3)
     var petal_radius := size * (0.54 + float(species) * 0.035)
     for i in range(petals):
