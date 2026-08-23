@@ -2,6 +2,7 @@ extends SceneTree
 
 const GameStateScript = preload("res://scripts/game_state.gd")
 const SaveServiceScript = preload("res://scripts/save_service.gd")
+const RunGoalScript = preload("res://scripts/run_goal.gd")
 
 var failures: Array[String] = []
 
@@ -11,6 +12,7 @@ func _init() -> void:
     _test_move_availability()
     _test_fair_batch_generation()
     _test_bloom_level_curve()
+    _test_run_goal_curve()
 
     if failures.is_empty():
         print("SMOKE_OK")
@@ -93,3 +95,15 @@ func _test_bloom_level_curve() -> void:
 
     info = SaveServiceScript.bloom_level_info(15)
     _expect(int(info["level"]) == 3 and int(info["progress"]) == 0 and int(info["need"]) == 12, "15 total lines should reach level 3")
+
+func _test_run_goal_curve() -> void:
+    _expect(RunGoalScript.target_for(0, 0) == 500, "first run should target 500")
+    _expect(RunGoalScript.target_for(520, 0) == 1000, "milestone target should advance after 500")
+    _expect(RunGoalScript.target_for(100, 430) == 430, "best within 500 should become the direct target")
+    _expect(RunGoalScript.target_for(100, 1400) == 500, "distant best should use an intermediate milestone")
+    _expect(RunGoalScript.is_near_best(900, 1000), "100-point gap should count as near best")
+    _expect(not RunGoalScript.is_near_best(500, 1000), "large best gap should not count as near best")
+    _expect(RunGoalScript.result_title(920, 1000) == "SO CLOSE", "near miss should get a close-result title")
+    _expect(RunGoalScript.result_title(1100, 1000) == "NEW BEST", "best-beating run should get new-best title")
+    _expect(RunGoalScript.retry_cta(920, 1000) == "BEAT YOUR BEST", "near miss should get a stronger retry CTA")
+    _expect(is_equal_approx(RunGoalScript.progress_ratio(250, 500, 0), 0.5), "milestone progress should be proportional")
