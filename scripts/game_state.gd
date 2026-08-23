@@ -56,8 +56,30 @@ func reset() -> void:
 
 func _generate_batch() -> void:
     piece_slots.clear()
-    for _i in range(3):
+    var pressure := board_pressure()
+    var guaranteed_fit_count := 1
+    if pressure >= 0.72:
+        guaranteed_fit_count = 2
+
+    for slot_index in range(3):
         var shape_index := _weighted_shape_index()
+        var should_force_fit := slot_index < guaranteed_fit_count
+        if pressure >= 0.72 and slot_index >= guaranteed_fit_count and rng.randf() < 0.35:
+            should_force_fit = true
+
+        if should_force_fit:
+            var max_cells := 99
+            if pressure >= 0.72:
+                max_cells = 3
+            elif pressure >= 0.58:
+                max_cells = 4
+
+            var candidates := _fitting_shape_indices(max_cells)
+            if candidates.is_empty():
+                candidates = _fitting_shape_indices()
+            if not candidates.is_empty():
+                shape_index = candidates[rng.randi_range(0, candidates.size() - 1)]
+
         piece_slots.append({
             "shape": SHAPES[shape_index],
             "color": rng.randi_range(0, 5),
@@ -71,6 +93,34 @@ func _weighted_shape_index() -> int:
     if roll < 0.72:
         return rng.randi_range(5, 18)
     return rng.randi_range(19, SHAPES.size() - 1)
+
+func _fitting_shape_indices(max_cells: int = 99) -> Array[int]:
+    var result: Array[int] = []
+    for i in range(SHAPES.size()):
+        var shape: Array = SHAPES[i]
+        if shape.size() > max_cells:
+            continue
+        if can_place_anywhere(shape):
+            result.append(i)
+    return result
+
+func occupied_cell_count() -> int:
+    var count := 0
+    for y in range(BOARD_SIZE):
+        for x in range(BOARD_SIZE):
+            if board[y][x] != EMPTY:
+                count += 1
+    return count
+
+func board_pressure() -> float:
+    return float(occupied_cell_count()) / float(BOARD_SIZE * BOARD_SIZE)
+
+func playable_slot_count() -> int:
+    var count := 0
+    for i in range(piece_slots.size()):
+        if slot_has_move(i):
+            count += 1
+    return count
 
 func can_place(shape: Array, origin: Vector2i) -> bool:
     for raw_cell in shape:
@@ -173,7 +223,9 @@ func place(slot_index: int, origin: Vector2i) -> Dictionary:
         "score_gain": placed_score + clear_score,
         "combo": combo,
         "new_batch": new_batch,
-        "game_over": game_over
+        "game_over": game_over,
+        "board_pressure": board_pressure(),
+        "playable_slots": playable_slot_count()
     }
 
 func _all_slots_used() -> bool:

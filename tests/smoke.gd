@@ -8,6 +8,7 @@ func _init() -> void:
     _test_shape_bounds()
     _test_line_preview_and_clear()
     _test_move_availability()
+    _test_pressure_aware_batch()
 
     if failures.is_empty():
         print("SMOKE_OK")
@@ -67,3 +68,17 @@ func _test_move_availability() -> void:
     _expect(game.slot_has_move(0), "single block should still have a move")
     _expect(not game.slot_has_move(1), "domino should have no move")
     _expect(game.has_any_move(), "game should continue while one slot has a legal move")
+
+func _test_pressure_aware_batch() -> void:
+    var game = GameStateScript.new()
+    for y in range(8):
+        for x in range(8):
+            game.board[y][x] = 0
+    game.board[7][7] = GameStateScript.EMPTY
+
+    _expect(game.occupied_cell_count() == 63, "pressure test should contain 63 occupied cells")
+    _expect(game.board_pressure() > 0.98, "board pressure should reflect a nearly full board")
+
+    game._generate_batch()
+    _expect(game.playable_slot_count() >= 2, "high-pressure batches should guarantee at least two immediately playable pieces")
+    _expect(game.has_any_move(), "fair batch generation should avoid immediate random game over")
