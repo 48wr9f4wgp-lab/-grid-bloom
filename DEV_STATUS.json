@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "phase": "主要機能実装",
+  "checks": {
+    "boot": "ok",
+    "test": "none",
+    "device": "ok",
+    "save": "none",
+    "analytics": "none",
+    "performance": "none",
+    "release": "warn"
+  },
+  "next": "現行ビルドの回帰確認と主要ループの実機確認を行う",
+  "note": "スマホ実機プレイは過去に確認済み。自動テストと公開準備は未完了扱い。",
+  "updated_at": "2026-09-15"
+}
